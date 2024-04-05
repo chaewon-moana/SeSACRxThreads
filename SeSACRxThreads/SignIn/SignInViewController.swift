@@ -7,6 +7,8 @@
 
 import UIKit
 import SnapKit
+import RxSwift
+import RxCocoa
 
 class SignInViewController: UIViewController {
 
@@ -15,27 +17,64 @@ class SignInViewController: UIViewController {
     let signInButton = PointButton(title: "로그인")
     let signUpButton = UIButton()
     
+    let viewModel = SignInViewModel()
+    let disposeBag = DisposeBag()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
         view.backgroundColor = Color.white
-        
         configureLayout()
         configure()
+        bind()
+       // signUpButton.addTarget(self, action: #selector(signUpButtonClicked), for: .touchUpInside)
+    }
+    
+    func bind() {
+//        let email = emailTextField.rx.text //orEmpty는 비즈니스 로직으로 가져가는게 맞을지, VC에서 처리하는게 맞을지 판단하고 기준을 세워야함
+//        let password = passwordTextField.rx.text
+//        let signInTap = signInButton.rx.tap
+//        let signUpTap = signUpButton.rx.tap
         
-        signUpButton.addTarget(self, action: #selector(signUpButtonClicked), for: .touchUpInside)
+        //Input을 struct으로 구성을 해서 초기화구문이 자동으로 완성됨!
+        let input = SignInViewModel.Input(
+            email: emailTextField.rx.text,
+            password: passwordTextField.rx.text,
+            signInTap: signInButton.rx.tap,
+            signUpTap: signUpButton.rx.tap)
+        
+        let output = viewModel.transform(input: input)
+        
+        output.email
+            .drive(emailTextField.rx.text)
+            .disposed(by: disposeBag)
+        
+        output.password
+            .drive(passwordTextField.rx.text)
+            .disposed(by: disposeBag)
+        
+        output.signInTap
+            .bind(with: self) { owner, _ in
+                print("화면전환 - Sign IN")
+            }
+            .disposed(by: disposeBag)
+        
+        output.signUpTap
+            .bind(with: self) { owner, _ in
+                owner.navigationController?.pushViewController(SignUpViewController(), animated: true)
+            }
+            .disposed(by: disposeBag)
+        
+        output.enabled
+            .drive(signInButton.rx.isEnabled)
+            .disposed(by: disposeBag)
     }
-    
-    @objc func signUpButtonClicked() {
-        navigationController?.pushViewController(SignUpViewController(), animated: true)
-    }
-    
-    
+//    @objc func signUpButtonClicked() {
+//        navigationController?.pushViewController(SignUpViewController(), animated: true)
+//    }
     func configure() {
         signUpButton.setTitle("회원이 아니십니까?", for: .normal)
         signUpButton.setTitleColor(Color.black, for: .normal)
     }
-    
     func configureLayout() {
         view.addSubview(emailTextField)
         view.addSubview(passwordTextField)
@@ -66,6 +105,4 @@ class SignInViewController: UIViewController {
             make.horizontalEdges.equalTo(view.safeAreaLayoutGuide).inset(20)
         }
     }
-    
-
 }
